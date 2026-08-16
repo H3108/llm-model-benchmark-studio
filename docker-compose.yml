@@ -1,12 +1,15 @@
-# ── Production compose (VPS deployment with HTTPS) ──
+# ── Production compose (VPS deployment behind system nginx) ──
+# The VPS already runs a system nginx (:80) + xray (:443, TLS termination),
+# so this compose only exposes loopback ports. The system nginx vhost
+# (see deploy/benchmark.conf) routes:
+#   /     → frontend container (:8081)
+#   /api/ → backend container  (:8001)
+#
 # Usage:
 #   1. cp backend/.env.example backend/.env && edit backend/.env
-#   2. Edit nginx/nginx.conf — replace DOMAIN with your actual domain
-#   3. docker compose up -d
-#   4. First-time SSL: docker compose run --rm certbot certonly \
-#        --webroot -w /var/www/certbot -d <DOMAIN> --email <EMAIL> \
-#        --agree-tos --no-eff-email
-#   5. Restart nginx: docker compose restart nginx
+#   2. docker compose up -d --build
+#   3. Create system nginx vhost (deploy/benchmark.conf) and reload nginx
+#   4. HTTPS is terminated by xray (SNI fallback → 127.0.0.1:80)
 #
 # For local development, use docker-compose.dev.yml instead:
 #   docker compose -f docker-compose.dev.yml up
@@ -17,9 +20,13 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     env_file: ./backend/.env
-    expose:
-      - "8000"
+    environment:
+      # Point SQLite into the persistent volume (config.py reads DATABASE_URL).
+      - DATABASE_URL=sqlite:////app/data/benchmark.db
+    ports:
+      - "127.0.0.1:8001:8000"
     volumes:
+      # SQLite DB persists across container recreation.
       - benchmark_data:/app/data
     restart: unless-stopped
 
@@ -27,36 +34,11 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
-    expose:
-      - "80"
-    depends_on:
-      - backend
-    restart: unless-stopped
-
-  nginx:
-    image: nginx:1.27-alpine
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - certbot_conf:/etc/letsencrypt:ro
-      - certbot_www:/var/www/certbot:ro
+      - "127.0.0.1:8081:80"
     depends_on:
-      - frontend
       - backend
-    restart: unless-stopped
-
-  certbot:
-    image: certbot/certbot
-    volumes:
-      - certbot_conf:/etc/letsencrypt
-      - certbot_www:/var/www/certbot
-    # Auto-renew: check every 12h, renew if within 30 days of expiry.
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --quiet; sleep 12h & wait $${!}; done;'"
     restart: unless-stopped
 
 volumes:
   benchmark_data:
-  certbot_conf:
-  certbot_www:
