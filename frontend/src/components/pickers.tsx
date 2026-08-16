@@ -43,7 +43,7 @@ export function ProviderPicker({
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const defaultProviders = includeDefaults ? SYNC_PROVIDERS : []
+  const defaultProviders = includeDefaults ? SYNC_PROVIDERS() : []
   const allProviders = Array.from(new Set([...defaultProviders, ...providers])).sort()
   const filtered = allProviders.filter(option => {
     if (!query.trim()) return true
@@ -73,7 +73,7 @@ export function ProviderPicker({
         type="button"
         className="provider-picker-trigger"
         onClick={() => setOpen(current => !current)}
-        aria-label="筛选 Provider"
+        aria-label="筛选服务商"
         aria-expanded={open}
       >
         <span>
@@ -93,8 +93,8 @@ export function ProviderPicker({
                 autoFocus
                 value={query}
                 onChange={event => setQuery(event.target.value)}
-                placeholder="搜索 Provider"
-                aria-label="搜索 Provider"
+                placeholder="搜索服务商"
+                aria-label="搜索服务商"
               />
             </div>
           )}
@@ -118,7 +118,7 @@ export function ProviderPicker({
                 {value === option && <span className="provider-picker-check">✓</span>}
               </button>
             )
-          }) : <div className="provider-picker-empty">没有匹配的 Provider</div>}
+          }) : <div className="provider-picker-empty">没有匹配的服务商</div>}
         </div>
       )}
     </div>

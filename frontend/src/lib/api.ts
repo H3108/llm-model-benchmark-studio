@@ -54,7 +54,10 @@ export type BenchmarkRun = { id: number; run_id: string; created_at: string; tot
 export type ModelSyncRun = { id: number; sync_run_id: string; provider: string; started_at: string; completed_at?: string | null; status: 'running' | 'success' | 'failed'; received_count: number; inserted_count: number; updated_count: number; inactive_count: number; error_message?: string | null }
 export type AuditLog = { id: number; action: string; detail?: string | null; created_at: string }
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+// Use VITE_API_URL for dev (points to local backend). In production (Docker),
+// set VITE_API_URL="" at build time so requests use same-origin relative URLs
+// (routed by nginx). The ?? operator lets an explicit empty string take effect.
+const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 const ADMIN_TOKEN_KEY = 'benchmark-studio.admin-token'
 const ADMIN_LAST_AUTH_KEY = 'benchmark-studio.admin-last-auth'
 

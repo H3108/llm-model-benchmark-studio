@@ -209,7 +209,7 @@ export function Leaderboard({ data, models }: { data: LeaderboardData | null; mo
         <div className="card-head" style={{ justifyContent: 'space-between' }}>
           <div>
             <h3>模型排行榜</h3>
-            <span className="sub">仅展示 Model Registry 中标记为免费的模型，并且必须有真实 Benchmark 记录。</span>
+            <span className="sub">仅展示模型注册表中标记为免费的模型，并且必须有真实性能基准记录。</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
             <ProviderPicker
@@ -249,7 +249,7 @@ export function Leaderboard({ data, models }: { data: LeaderboardData | null; mo
               <tr>
                 <th style={{ width: 56, textAlign: 'center' }}>排名</th>
                 <th>模型</th>
-                <th>Provider</th>
+                <th>服务商</th>
                 {focus === 'performance' && (
                   <>
                     <th>运行性能分</th>

@@ -1,120 +1,115 @@
-# LLM Model Benchmark Studio
+# LLM Model Benchmark Studio 🚀
 
-模型信息管理、Operational Benchmark、Capability Benchmark、评分与智能分析的工程工具。
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009485.svg)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React-18+-61DAFB.svg)](https://reactjs.org/)
 
-> **文档与当前状态**：本仓库 `docs/` 下文档较多，部分为 V1 阶段历史快照，可能与当前代码不一致。权威的实时状态、已修复问题与待办排期见 [`outputs/PROJECT_AUDIT_REPORT.md`](outputs/PROJECT_AUDIT_REPORT.md)。安全相关以 `X-Admin-Token` 全局中间件 + `/api/admin/verify` 端点为准（高耗接口均已鉴权）。
+**LLM Model Benchmark Studio** 是一个专业的大语言模型 (LLM) 性能测试、能力评估与智能推荐平台。它旨在解决模型爆炸时代下，开发者面对数百个模型（尤其是免费模型）时，因缺乏客观数据而导致的“选择困难”问题。
 
-## 架构
+通过构建一套从 **模型注册 $\rightarrow$ 性能基准 $\rightarrow$ 能力评估 $\rightarrow$ 智能评分** 的完整闭环，本项目将模型能力从“厂商宣称”转化为“真实可测”的量化指标。
 
-- **后端**：FastAPI + SQLAlchemy + SQLite (`backend/app/`)
-- **前端**：React + TypeScript + Vite（`frontend/src/`，原生 CSS，`tailwindcss` 已移除）
-- **6 个 LLM 服务商**，137+ 免费模型
+---
 
-| 服务商 | 命名空间 | 免费判定方式 |
-|---|---|---|
-| OpenRouter | 原始 ID | `:free` 后缀 |
-| SiliconFlow | `siliconflow::` | 官方 $0 定价 + 操作员白名单 |
-| OpenCode | `opencode::` | `-free` 后缀 + 操作员白名单 |
-| 腾讯云混元 | `tencentcloud::` | 操作员白名单（额度制免费） |
-| NVIDIA NIM | `nvidia::` | 操作员白名单（积分制免费） |
-| Google Gemini | `google::` | 操作员白名单（免费 tier） |
+## 🌟 核心价值
 
-## 启动
+在面对 OpenRouter 等聚合平台提供的数百个模型时，本项目提供以下能力：
 
-### 后端
+- **🛡️ 安全的免费模型导航**：建立严格的本地白名单校验机制，确保测试仅针对标记为 `free` 的模型，规避意外扣费风险。
+- **⚡ 毫秒级性能量化**：真实采集 **TTFT (首字延迟)**、**TPS (吞吐量)** 和 **Total Latency**，揭示模型在真实交互中的流畅度。
+- **🧠 多维度能力验证**：通过定制化的任务集 (Coding, Reasoning, Structured Output) 验证模型的实际智力水平。
+- **🎯 任务导向的智能推荐**：不再是单一的排行榜，而是根据不同任务 Profile (如 `Coding`, `Chat`) 动态计算得分并推荐最适配模型。
 
+---
+
+## 🏗️ 系统架构
+
+项目采用前后端分离架构，核心逻辑分为四个层级：
+
+```mermaid
+graph TD
+    A[Model Registry] -->|同步元数据/白名单| B[Benchmark Engine]
+    B -->|采集 TTFT/TPS/通过率| C[Score Engine]
+    C -->|多维度加权评分| D[Intelligence Layer]
+    D -->|推荐理由/深度报告| E[Frontend Dashboard]
+    
+    subgraph "Data Layer"
+    B -.-> DB[(SQLite)]
+    C -.-> DB
+    end
+    
+    subgraph "Provider Layer"
+    B --> P1[OpenRouter]
+    B --> P2[SiliconFlow]
+    B --> P3[Google Gemini]
+    B --> P4[NVIDIA NIM]
+    end
+```
+
+### 核心模块
+- **Model Registry**: 统一管理模型 ID、Context Window 及免费状态。
+- **Benchmark Engine**: 基于 `asyncio` 的高并发测试流水线，支持流式输出采集。
+- **Score Engine**: 将原始指标通过归一化算法转化为 $[0, 100]$ 的竞争力分数。
+- **Intelligence Layer**: 提供基于证据链的模型分析报告和推荐建议。
+
+---
+
+## 🛠️ 快速启动
+
+### 1. 环境准备
+- Python 3.10+
+- Node.js 18+ & npm
+- Docker & Docker Compose (可选)
+
+### 2. 后端启动
 ```bash
 cd backend
 cp .env.example .env
-# 在 .env 中填写 ADMIN_TOKEN 和需要的 Provider API Key
+# 编辑 .env 配置 ADMIN_TOKEN 和 Provider API Key
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-### 前端
-
+### 3. 前端启动
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-前端默认连接 `http://localhost:8000`，可通过 `VITE_API_URL` 环境变量调整。
-
-### Docker Compose
-
+### 4. Docker 一键部署
 ```bash
 cp backend/.env.example backend/.env
-# 编辑 backend/.env
 docker compose up --build
 ```
+访问 `http://localhost:5173` 即可进入评测工作台。
 
-修改 `backend/.env` 后需重建容器：
+---
 
-```bash
-docker compose up -d --force-recreate backend
-```
+## 🔑 API 契约 (管理接口)
 
-## 安全策略
+所有管理类接口（同步模型、启动测试）均需在请求头中携带 `X-Admin-Token`。
 
-系统只测试明确标记为免费的模型。OpenRouter 通过 `:free` 后缀或 `openrouter/free` 路由判定；其余服务商（SiliconFlow、OpenCode、腾讯云混元、NVIDIA NIM、Google Gemini）均通过操作员白名单确认，且后端在发起 Provider 请求前会二次校验数据库免费白名单。非聊天模型（embedding、parser、safety 等）自动过滤，不进入测试列表。
+| 方法 | 路径 | 说明 | 权限 |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/models/sync` | 同步服务商模型目录 | `Admin` |
+| `POST` | `/api/benchmark/run` | 启动性能基准测试 | `Admin` |
+| `POST` | `/api/capabilities/benchmark` | 启动能力维度评测 | `Admin` |
+| `GET` | `/api/leaderboard` | 获取综合评分排行榜 | `Public` |
+| `GET` | `/api/recommend` | 根据任务推荐模型 | `Public` |
 
-腾讯云和 NVIDIA 的免费额度是按月/按账号发放的，额度用尽后 adapter 会检测到 `quota_exhausted` 信号并自动排除该模型。
+---
 
-## Backend API
+## 📈 路线图 (Roadmap)
 
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| GET | `/health` | 健康检查 |
-| GET | `/api/models` | 本地免费模型列表 |
-| GET | `/api/models/sync?provider=<p>` | 同步指定服务商模型目录 |
-| GET | `/api/models/sync/runs` | 同步历史记录 |
-| POST | `/api/benchmark/run` | 运行性能 Benchmark |
-| GET | `/api/benchmark/results` | 历史 Benchmark 结果 |
-| GET | `/api/benchmark/runs` | Benchmark 批次记录 |
-| POST | `/api/capabilities/benchmark` | 运行能力 Benchmark |
-| GET | `/api/capabilities/tasks` | 能力任务列表 |
-| GET | `/api/leaderboard` | 模型评分排行榜 |
-| GET | `/api/leaderboard/capability` | 能力维度排行榜 |
-| GET | `/api/recommend?task=coding` | 任务推荐模型 |
-| GET | `/api/models/{model_id}/intelligence` | 模型智能分析 |
-| GET | `/docs` | OpenAPI 文档 |
+- [x] **V1.0 Core**: 基础适配器、性能采集、基础评分 $\checkmark$
+- [x] **V1.1 Intelligence**: 智能分析报告、任务导向推荐 $\checkmark$
+- [ ] **V1.2 Expansion**: 增加更多 Provider 原生适配、多模态能力评测。
+- [ ] **V2.0 Ecosystem**: 引入社区驱动的任务集、实时监控看板、本地模型 (Ollama) 集成。
 
-所有写操作和管理接口需要 `X-Admin-Token` 请求头，值须与 `ADMIN_TOKEN` 一致。
+---
 
-## 前端页面
-
-- **首页** — 概览仪表盘、快速入口
-- **模型目录** — 按服务商筛选、搜索免费模型
-- **测试实验室** — 选择模型运行 Benchmark / Capability 测试
-- **测试结果** — 历史结果表格、分页、排序
-- **排行榜** — 综合评分排行，按服务商下拉筛选
-- **智能分析** — 单模型深度评分报告
-- **管理控制台** — 同步模型目录、查看运行状态、Token 配置
-
-## 项目结构
-
-```
-backend/app/
-  main.py          # FastAPI 入口、路由
-  config.py        # Pydantic 配置 (.env)
-  registry.py      # Model Registry、同步逻辑、免费判定
-  services.py      # Benchmark 执行、Provider 路由
-  score.py         # 评分引擎
-  intelligence.py  # 智能分析
-  providers/       # 6 个 Provider 适配器
-  capabilities/    # 能力测试框架
-  scoring/         # 评分算法组件
-
-frontend/src/
-  App.tsx          # 主应用、所有页面组件
-  lib/api.ts       # API 客户端
-  components/      # UI 组件、管理控制台
-  styles.css       # 全局样式
-```
-
-## 文档
-
-详细文档位于 `docs/` 目录，包括架构设计、评分规则、API 契约等。
+## 📄 License
+Distributed under the MIT License. See `LICENSE` for more information.

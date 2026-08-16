@@ -72,6 +72,30 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/api/providers")
+def providers() -> list[dict]:
+    """Return display metadata for all providers (built-in + custom).
+
+    No admin auth required — this endpoint exposes only display metadata
+    (label/color/initials), never API keys. The frontend fetches this on
+    startup to render provider pickers, filters, and avatars without
+    hard-coding provider IDs.
+    """
+    built_in = [
+        {"id": "openrouter", "label": "OpenRouter", "color": "#f97316", "initials": "OR", "syncable": True},
+        {"id": "siliconflow", "label": "SiliconFlow", "color": "#0d9488", "initials": "SF", "syncable": True},
+        {"id": "opencode", "label": "OpenCode", "color": "#8b5cf6", "initials": "OC", "syncable": True},
+        {"id": "tencentcloud", "label": "腾讯云混元", "color": "#2563eb", "initials": "TC", "syncable": True},
+        {"id": "nvidia", "label": "NVIDIA NIM", "color": "#84cc16", "initials": "NV", "syncable": True},
+        {"id": "google", "label": "Google Gemini", "color": "#ea4335", "initials": "GG", "syncable": True},
+    ]
+    custom = [
+        {"id": pid, "label": spec["label"], "color": spec["color"], "initials": spec["initials"], "syncable": True}
+        for pid, spec in get_settings().custom_provider_specs().items()
+    ]
+    return built_in + custom
+
+
 @app.get("/api/audit/log", response_model=list[AuditLogEntry])
 def audit_log(request: Request, limit: int = 50, db: Session = Depends(get_db)):
     """Return recent administrative audit-log entries (admin only)."""
@@ -149,26 +173,36 @@ def benchmark_runs(db: Session = Depends(get_db)):
 @app.get("/api/models/sync", response_model=list[ModelRegistryResult])
 async def sync_models(provider: str = "openrouter", db: Session = Depends(get_db)):
     provider = provider.strip().lower()
-    if provider not in {"openrouter", "siliconflow", "opencode", "tencentcloud", "nvidia", "google"}:
+    settings = get_settings()
+    custom_specs = settings.custom_provider_specs()
+    built_in = {"openrouter", "siliconflow", "opencode", "tencentcloud", "nvidia", "google"}
+    if provider not in built_in and provider not in custom_specs:
         raise HTTPException(status_code=400, detail="Unsupported provider")
     started_at = datetime.now(timezone.utc)
     sync_run = ModelSyncRun(sync_run_id=str(uuid.uuid4()), provider=provider, started_at=started_at, status="running")
     db.add(sync_run)
     db.commit()
-    settings = get_settings()
-    _, adapter = provider_for(
-        "siliconflow::sync" if provider == "siliconflow" else (
-            "opencode::sync" if provider == "opencode" else (
-                "tencentcloud::sync" if provider == "tencentcloud" else (
-                    "nvidia::sync" if provider == "nvidia" else (
-                    "google::sync" if provider == "google" else "openrouter/free"
-                    )
-                )
-            )
-        ),
-        settings,
-        provider,
-    )
+    # Build the namespace seed for provider_for(). Custom providers use the
+    # same "{provider}::" convention as siliconflow/tencentcloud.
+    if provider == "siliconflow":
+        seed = "siliconflow::sync"
+    elif provider == "opencode":
+        seed = "opencode::sync"
+    elif provider == "tencentcloud":
+        seed = "tencentcloud::sync"
+    elif provider == "nvidia":
+        seed = "nvidia::sync"
+    elif provider == "google":
+        seed = "google::sync"
+    elif provider in custom_specs:
+        seed = f"{provider}::sync"
+    else:
+        seed = "openrouter/free"
+    _, adapter = provider_for(seed, settings, provider)
+    # Parse custom provider free-model whitelists into a {provider: set} map.
+    custom_free_models: dict[str, set[str]] = {
+        pid: spec["free_models"] for pid, spec in custom_specs.items()
+    }
     try:
         result = sync_registry_models(
             db,
@@ -180,6 +214,7 @@ async def sync_models(provider: str = "openrouter", db: Session = Depends(get_db
             tencentcloud_free_models=parse_tencentcloud_free_models(settings.tencentcloud_free_models),
             nvidia_free_models=parse_nvidia_free_models(settings.nvidia_free_models),
             google_free_models=parse_google_free_models(settings.google_free_models),
+            custom_free_models=custom_free_models,
         )
         sync_run.received_count = result.received_count
         sync_run.inserted_count = result.inserted_count

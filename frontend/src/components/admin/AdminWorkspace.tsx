@@ -166,7 +166,7 @@ export function AdminWorkspace({ adminToken = '', onNavigate }: { adminToken?: s
           <div className="d up">已同步</div>
         </div>
         <div className="stat">
-          <div className="k"><Settings2 size={15} /> Provider 数量</div>
+          <div className="k"><Settings2 size={15} /> 服务商数量</div>
           <div className="v">{summary.providerCount} <small>家</small></div>
           <div className="d up">全部在线</div>
         </div>
@@ -178,10 +178,10 @@ export function AdminWorkspace({ adminToken = '', onNavigate }: { adminToken?: s
         <div className="stat">
           <div className="k"><CheckCircle2 size={15} /> 测试成功率</div>
           <div className="v">{summary.successRate.replace('%', '')}<small>%</small></div>
-          <div className={`d ${successRateClass}`}>部分 Provider 额度波动</div>
+          <div className={`d ${successRateClass}`}>部分服务商额度波动</div>
         </div>
         <div className="stat">
-          <div className="k"><Zap size={15} /> Capability 任务</div>
+          <div className="k"><Zap size={15} /> 能力任务</div>
           <div className="v">{data.capabilityTasks.filter(task => task.enabled).length} <small>个</small></div>
           <div className="d up">全部就绪</div>
         </div>
@@ -189,14 +189,14 @@ export function AdminWorkspace({ adminToken = '', onNavigate }: { adminToken?: s
 
       <div className="grid g-2" style={{ gridTemplateColumns: '1.3fr 1fr' }}>
         <div className="card">
-          <div className="card-head"><h3>模型目录同步</h3><span className="sub">从所选 Provider 同步免费模型目录，自动过滤付费模型</span></div>
+          <div className="card-head"><h3>模型目录同步</h3><span className="sub">从所选服务商同步免费模型目录，自动过滤付费模型</span></div>
           <div className="card-pad">
             <div className="row between wrap" style={{ marginBottom: 16, alignItems: 'center' }}>
               <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-                <span className="muted" style={{ fontSize: 12.5 }}>Provider</span>
+                <span className="muted" style={{ fontSize: 12.5 }}>服务商</span>
                 <ProviderPicker
                   value={syncProvider}
-                  providers={SYNC_PROVIDERS}
+                  providers={SYNC_PROVIDERS()}
                   onChange={setSyncProvider}
                   showSearch={false}
                   includeDefaults={false}
@@ -217,7 +217,7 @@ export function AdminWorkspace({ adminToken = '', onNavigate }: { adminToken?: s
         <div className="card">
           <div className="card-head"><h3>最近同步状态</h3><span className="sub">最近一次同步的接收与更新摘要</span></div>
           <div className="card-pad" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div className="kv"><span className="muted">Provider</span><span className="mono">{summary.latestSync ? providerLabel(summary.latestSync.provider) : '—'}</span></div>
+            <div className="kv"><span className="muted">服务商</span><span className="mono">{summary.latestSync ? providerLabel(summary.latestSync.provider) : '—'}</span></div>
             <div className="kv"><span className="muted">最近接收</span><span className="mono" style={{ color: 'var(--brand-2)' }}>{summary.latestSync?.received_count ?? '—'} 个模型</span></div>
             <div className="kv"><span className="muted">更新数量</span><span className="mono" style={{ color: 'var(--brand)' }}>{summary.latestSync?.updated_count ?? '—'} 个模型</span></div>
             <div className="kv"><span className="muted">同步时间</span><span className="num">{formatDateShort(summary.latestSync?.completed_at ?? summary.latestSync?.started_at)}</span></div>
@@ -248,7 +248,7 @@ export function AdminWorkspace({ adminToken = '', onNavigate }: { adminToken?: s
           <div className="card-head"><h3>快速管理</h3></div>
           <div className="card-pad" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <button className="btn btn-soft" style={{ justifyContent: 'flex-start', padding: '12px 14px' }} onClick={() => onNavigate?.('perms')}>→ 配置 Admin Token</button>
-            <button className="btn btn-soft" style={{ justifyContent: 'flex-start', padding: '12px 14px' }} onClick={() => onNavigate?.('perms')}>→ 管理 Provider 白名单</button>
+            <button className="btn btn-soft" style={{ justifyContent: 'flex-start', padding: '12px 14px' }} onClick={() => onNavigate?.('perms')}>→ 管理服务商白名单</button>
             <button className="btn btn-soft" style={{ justifyContent: 'flex-start', padding: '12px 14px' }} onClick={() => onNavigate?.('perms')}>→ 查看操作审计</button>
             <div className="callout" style={{ background: 'var(--info-soft)', borderColor: 'color-mix(in srgb, var(--info) 30%, transparent)' }}>
               <span className="ic" style={{ color: 'var(--info)' }}><Lock size={16} /></span>
@@ -264,7 +264,7 @@ export function AdminWorkspace({ adminToken = '', onNavigate }: { adminToken?: s
           <div className="card-pad" style={{ padding: 0 }}>
             <div className="table-scroll admin-history-scroll" style={{ border: 0, borderRadius: 0 }}>
               <table className="dt">
-                <thead><tr><th>开始时间</th><th>Provider</th><th>状态</th><th className="col-num">接收</th><th className="col-num">新增 / 更新</th></tr></thead>
+                <thead><tr><th>开始时间</th><th>服务商</th><th>状态</th><th className="col-num">接收</th><th className="col-num">新增 / 更新</th></tr></thead>
                 <tbody>
                   {data.syncRuns.slice(0, 10).map(run => (
                     <tr key={run.sync_run_id}>
@@ -283,7 +283,7 @@ export function AdminWorkspace({ adminToken = '', onNavigate }: { adminToken?: s
         </div>
 
         <div className="card">
-          <div className="card-head between"><h3>Benchmark 批次历史</h3><span className="badge b-info"><span className="d" />{data.benchmarkRuns.length} 条记录 · 最近 {Math.min(data.benchmarkRuns.length, 10)} 次</span></div>
+          <div className="card-head between"><h3>性能基准批次历史</h3><span className="badge b-info"><span className="d" />{data.benchmarkRuns.length} 条记录 · 最近 {Math.min(data.benchmarkRuns.length, 10)} 次</span></div>
           <div className="card-pad" style={{ padding: 0 }}>
             <div className="table-scroll admin-history-scroll" style={{ border: 0, borderRadius: 0 }}>
               <table className="dt">

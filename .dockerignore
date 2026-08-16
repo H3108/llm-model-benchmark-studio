@@ -1,0 +1,18 @@
+# Keep build contexts lean — excludes speed up docker build & avoid cache busting.
+**/node_modules
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.env
+**/.env.local
+**/dist
+.git
+.gitignore
+.workbuddy
+docs
+design
+outputs
+*.log
+*.db
+.dockerignore
+docker-compose*.yml

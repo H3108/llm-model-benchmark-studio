@@ -9,7 +9,7 @@ export function FirstRunBanner({ onStart }: { onStart: () => void }) {
         <FlaskConical size={22} />
       </div>
       <div>
-        <h2>欢迎使用 LLM Model Benchmark Studio</h2>
+        <h2>欢迎使用 LLM 模型评测工作台</h2>
         <p>当前还没有测试数据。建议先同步模型、配置 Admin Token、选择模型并执行第一次测试，再查看排行榜。</p>
         <div className="first-run-steps">
           <span>1. 同步模型</span>

@@ -17,6 +17,31 @@ export const PROFILE_LABELS: Record<string, string> = {
   chat: '长文本',
 }
 
+export const CAPABILITY_LABELS: Record<string, string> = {
+  modality: '模态',
+  input_modalities: '输入模态',
+  output_modalities: '输出模态',
+  tokenizer: '分词器',
+  multilingual: '多语言',
+  coding: '代码',
+  code: '代码',
+  instruction_following: '指令遵循',
+  structured_output: '结构化输出',
+  reasoning: '推理',
+  tool_calling: '工具调用',
+  long_context: '长上下文',
+  vision: '视觉',
+  audio: '音频',
+  video: '视频',
+  image: '图像',
+}
+
+export function localizeCapabilityText(text: string | null | undefined): string {
+  if (!text) return ''
+  const keys = Object.keys(CAPABILITY_LABELS).sort((a, b) => b.length - a.length)
+  return keys.reduce((t, k) => t.replace(new RegExp(`\\b${k}\\b`, 'g'), CAPABILITY_LABELS[k]), text)
+}
+
 
 export const MODEL_PAGE_SIZE = 25
 
@@ -71,7 +96,7 @@ export function requestErrorMessage(error: unknown, fallback: string) {
     if (error.status === 401) return '需要配置 Admin Token，请在左侧“管理权限”中填写后重试。'
     if (error.status === 403) return 'Admin Token 无效，请检查左侧“管理权限”中的 Token。'
     if (error.status === 503) return '后端未配置 Admin Token，请检查 backend/.env。'
-    if (error.status === 502) return '模型服务请求失败，请检查 Provider 配置或稍后重试。'
+    if (error.status === 502) return '模型服务请求失败，请检查服务商配置或稍后重试。'
     return error.message || fallback
   }
   if (error instanceof TypeError && /fetch/i.test(error.message)) return '无法连接后端服务，请检查后端是否启动。'

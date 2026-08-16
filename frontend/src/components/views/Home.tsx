@@ -67,7 +67,7 @@ export function Home({ models, results, capabilitySuccessCount, capabilityTasks,
           <div className="v">{models.length} <small>个</small></div>
           <div className="foot">
             <div className="prog"><i style={{ width: '100%' }} /></div>
-            <div className="ftxt">已测试 {testedCount}/{models.length} · {providersCount} 家 Provider · {freeCount === models.length ? '全部免费' : `${freeCount} 个免费`}</div>
+            <div className="ftxt">已测试 {testedCount}/{models.length} · {providersCount} 家服务商 · {freeCount === models.length ? '全部免费' : `${freeCount} 个免费`}</div>
           </div>
         </div>
         <div className="stat">
@@ -130,12 +130,12 @@ export function Home({ models, results, capabilitySuccessCount, capabilityTasks,
           <div className="card-pad" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div className="step-row" onClick={onModels}>
               <div className="step-n">1</div>
-              <div className="step-main"><div className="st">浏览模型库</div><div className="ss">按 Provider、免费状态筛选</div></div>
+              <div className="step-main"><div className="st">浏览模型库</div><div className="ss">按服务商、免费状态筛选</div></div>
               <span className="step-arrow">→</span>
             </div>
             <div className="step-row" onClick={onStart}>
               <div className="step-n">2</div>
-              <div className="step-main"><div className="st">执行性能测试</div><div className="ss">建议先选 3 个模型做 Smoke</div></div>
+              <div className="step-main"><div className="st">执行性能测试</div><div className="ss">建议先选 3 个模型做冒烟测试</div></div>
               <span className="step-arrow">→</span>
             </div>
             <div className="step-row" onClick={onLeaderboard}>

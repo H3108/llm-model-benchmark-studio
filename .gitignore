@@ -39,9 +39,11 @@ backend/data/
 #   docs/          internal reports / audits / design notes (110+ files)
 #   .workbuddy/    assistant private memory & work logs
 #   design/        standalone design prototypes & screenshot binaries
+#   articles/      blog posts (writing, not project code)
 docs/
 .workbuddy/
 design/
+articles/
 
 # ── OS / editor ──
 .DS_Store

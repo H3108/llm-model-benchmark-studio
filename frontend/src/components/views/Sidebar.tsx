@@ -34,7 +34,7 @@ export function Sidebar({
   models: Model[];
 }) {
   const nav = [
-    { id: 'home' as View, label: '首页', icon: LayoutDashboard, count: '概览' },
+    { id: 'home' as View, label: '首页', icon: LayoutDashboard },
     { id: 'explorer' as View, label: '模型库', icon: Server, count: models.length.toString() },
     { id: 'lab' as View, label: '性能测试', icon: FlaskConical },
     { id: 'cap' as View, label: '能力测试', icon: Target },

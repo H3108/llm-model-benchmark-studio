@@ -17,6 +17,7 @@ from .providers.opencode import OpenCodeAdapter
 from .providers.tencentcloud import TencentCloudAdapter
 from .providers.nvidia import NvidiaAdapter
 from .providers.google import GoogleAdapter
+from .providers.openai_compat import OpenAICompatAdapter
 
 
 def _benchmark_fields(result: ProviderResult) -> dict:
@@ -60,6 +61,18 @@ def provider_for(model_id: str, settings: Settings, provider: str | None = None)
         return selected, NvidiaAdapter(getattr(settings, "nvidia_api_key", ""), getattr(settings, "nvidia_base_url", "https://integrate.api.nvidia.com/v1"), settings.request_timeout_seconds)
     if selected == "google":
         return selected, GoogleAdapter(getattr(settings, "google_api_key", ""), getattr(settings, "google_base_url", "https://generativelanguage.googleapis.com/v1beta/openai"), settings.request_timeout_seconds)
+    # Fallback: dynamically-configured OpenAI-compatible providers.
+    custom_specs = settings.custom_provider_specs()
+    if selected in custom_specs:
+        spec = custom_specs[selected]
+        return selected, OpenAICompatAdapter(
+            provider_id=selected,
+            api_key=spec["api_key"],
+            base_url=spec["base_url"],
+            timeout=settings.request_timeout_seconds,
+            namespace=f"{selected}::",
+            label=spec.get("label"),
+        )
     raise ValueError(f"Unsupported provider: {selected}")
 
 

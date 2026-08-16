@@ -20,6 +20,7 @@ import { PermissionsPage } from './components/views/PermissionsPage'
 import { Results } from './components/views/Results'
 import { Sidebar } from './components/views/Sidebar'
 import { Topbar } from './components/views/Topbar'
+import { ensureProvidersLoaded } from './lib/providers'
 
 export default function App() {
   const [view, setView] = useState<View>('home')
@@ -68,6 +69,10 @@ export default function App() {
     window.addEventListener('resize', updateSidebarOpen)
     return () => window.removeEventListener('resize', updateSidebarOpen)
   }, [])
+
+  // Load provider metadata (including dynamic custom providers) from backend.
+  // Falls back to built-in defaults silently if backend is unreachable.
+  useEffect(() => { ensureProvidersLoaded() }, [])
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -235,7 +240,7 @@ export default function App() {
       const merged = [...allModels, ...keptModels]
       setModels(merged)
       if (errors.length) {
-        setSyncMessage(`同步完成：${allModels.length} 个模型（${errors.length} 个 Provider 失败：${errors.join('；')}）`)
+        setSyncMessage(`同步完成：${allModels.length} 个模型（${errors.length} 个服务商失败：${errors.join('；')}）`)
       } else {
         setSyncMessage(`模型同步完成：共 ${allModels.length} 个模型`)
       }
@@ -337,7 +342,7 @@ export default function App() {
         {!loading && view === 'results' && <Results results={results} capabilityResults={capabilityResults} />}
         {!loading && view === 'leaderboard' && <Leaderboard data={leaderboard} models={models} />}
         {!loading && view === 'intelligence' && <IntelligencePage models={models} results={results} />}
-        {!loading && view === 'recommend' && <Recommend models={models} setView={setView} setSelected={setSelected} />}
+        {!loading && view === 'recommend' && <Recommend models={models} setView={setView} />}
         {!loading && view === 'admin' && <AdminWorkspace adminToken={adminToken} onNavigate={(v) => setView(v as View)} />}
         {!loading && view === 'perms' && <PermissionsPage adminToken={adminToken} onTokenChange={token => { setAdminToken(token); api.setAdminToken(token); setAuthError(null) }} />}
         {!loading && view === 'system' && <DesignSystemPage />}

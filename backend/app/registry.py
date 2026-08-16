@@ -117,6 +117,24 @@ def parse_tencentcloud_free_models(value: str | None) -> set[str]:
     }
 
 
+# ── Custom (dynamic) provider helpers ──────────────────────────────────────
+# These support the OpenAI-compatible custom-provider mechanism driven by
+# CUSTOM_PROVIDERS in backend/.env. Registry IDs use "{provider}::" namespace.
+
+def custom_registry_id(provider: str, raw_id: str) -> str:
+    """Prefix a raw model ID with the provider namespace."""
+    prefix = f"{provider}::"
+    normalized = (raw_id or "").strip()
+    return normalized if normalized.startswith(prefix) else f"{prefix}{normalized}"
+
+
+def custom_raw_model_id(provider: str, model_id: str) -> str:
+    """Strip the provider namespace prefix."""
+    prefix = f"{provider}::"
+    normalized = (model_id or "").strip()
+    return normalized[len(prefix):] if normalized.startswith(prefix) else normalized
+
+
 class ModelRegistry(Base):
     __tablename__ = "model_registry"
 
@@ -204,7 +222,7 @@ def _is_zero_priced(pricing: dict) -> bool:
     return input_val == 0 and output_val == 0
 
 
-def _is_free(model_id: str, pricing: dict, provider: str = "openrouter", siliconflow_free_models: set[str] | None = None, opencode_free_models: set[str] | None = None, tencentcloud_free_models: set[str] | None = None, nvidia_free_models: set[str] | None = None, google_free_models: set[str] | None = None) -> bool:
+def _is_free(model_id: str, pricing: dict, provider: str = "openrouter", siliconflow_free_models: set[str] | None = None, opencode_free_models: set[str] | None = None, tencentcloud_free_models: set[str] | None = None, nvidia_free_models: set[str] | None = None, google_free_models: set[str] | None = None, custom_free_models: dict[str, set[str]] | None = None) -> bool:
     # OpenRouter: never infer free from pricing. Only the explicit :free
     # suffix or the openrouter/free route is safe (metadata can be stale).
     # SiliconFlow/OpenCode: check the operator whitelist first, then fall
@@ -238,6 +256,11 @@ def _is_free(model_id: str, pricing: dict, provider: str = "openrouter", silicon
         # Same explicit-allowlist policy as NVIDIA: what actually runs free on
         # the free tier depends on account tier, so the operator lists IDs.
         return google_raw_model_id(model_id) in (google_free_models or set())
+    # Custom (dynamic) OpenAI-compatible providers: explicit whitelist only.
+    # Free status is never inferred from pricing — safe by default, matching
+    # the nvidia/google policy. An empty whitelist admits nothing.
+    if custom_free_models and provider in custom_free_models:
+        return custom_raw_model_id(provider, model_id) in custom_free_models[provider]
     return is_explicitly_free_model_id(model_id)
 
 
@@ -269,6 +292,7 @@ def sync_models(
     tencentcloud_free_models: set[str] | None = None,
     nvidia_free_models: set[str] | None = None,
     google_free_models: set[str] | None = None,
+    custom_free_models: dict[str, set[str]] | None = None,
 ) -> ModelSyncResult:
     sync_time = synced_at or datetime.now(timezone.utc)
     rows: list[ModelRegistry] = []
@@ -292,9 +316,11 @@ def sync_models(
             model_id = google_registry_id(raw_id)
             if not google_is_chat_model(model_id):
                 continue
+        elif custom_free_models and provider in custom_free_models:
+            model_id = custom_registry_id(provider, raw_id)
         else:
             model_id = raw_id
-        if _is_free(model_id, item.get("pricing") or {}, provider, siliconflow_free_models, opencode_free_models, tencentcloud_free_models, nvidia_free_models, google_free_models):
+        if _is_free(model_id, item.get("pricing") or {}, provider, siliconflow_free_models, opencode_free_models, tencentcloud_free_models, nvidia_free_models, google_free_models, custom_free_models):
             free_items.append((item, model_id))
     received_ids: set[str] = {model_id for _, model_id in free_items}
     inserted_count = 0
@@ -309,7 +335,7 @@ def sync_models(
             "pricing_input": _number(pricing.get("prompt")),
             "pricing_output": _number(pricing.get("completion")),
             "capabilities": item.get("architecture") or {},
-            "is_free": _is_free(model_id, pricing, provider, siliconflow_free_models, opencode_free_models, tencentcloud_free_models, nvidia_free_models, google_free_models),
+            "is_free": _is_free(model_id, pricing, provider, siliconflow_free_models, opencode_free_models, tencentcloud_free_models, nvidia_free_models, google_free_models, custom_free_models),
             "source": provider,
             "source_updated_at": _source_datetime(item, sync_time),
             "raw_metadata": item,

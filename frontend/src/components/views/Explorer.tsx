@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Activity, Server, Copy, Search, CircleDot, Target, CheckCircle2, FlaskConical } from 'lucide-react'
 import { Model, Benchmark } from '../../lib/api'
 import { Button, Input } from '../ui'
+import { MultiSelectChipField } from '../common/MultiSelectChipField'
 import { providerInitials, providerColor, PROVIDER_LABELS } from '../../lib/providers'
 import { Pagination, MODEL_PAGE_SIZE, fmtDateTime, modelTestStats, CAP_CAT_LABEL, modelCapCats } from '../../lib/format'
 import { View } from '../../lib/types'
@@ -23,9 +24,9 @@ export function Explorer({
   setView: (v: View) => void;
 }) {
   const [query, setQuery] = useState('')
-  const [provider, setProvider] = useState('all')
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [capFilter, setCapFilter] = useState('all')
+  const [providerSet, setProviderSet] = useState<Set<string>>(new Set())
+  const [statusSet, setStatusSet] = useState<Set<string>>(new Set())
+  const [capSet, setCapSet] = useState<Set<string>>(new Set())
   const checked = labChecked
   const setChecked = setLabChecked
   const [page, setPage] = useState(1)
@@ -34,19 +35,54 @@ export function Explorer({
   const testedIds = new Set(testStats.keys())
   const successfulIds = new Set([...testStats].filter(([, stats]) => stats.successful).map(([id]) => id))
   const providers = [...new Set(models.map(m => m.provider))].sort()
+  // 各 provider 模型数
+  const providerCounts = new Map<string, number>()
+  models.forEach(m => providerCounts.set(m.provider, (providerCounts.get(m.provider) ?? 0) + 1))
+  const providerOptions = providers.map(p => ({
+    value: p,
+    label: PROVIDER_LABELS[p] ?? p,
+    initials: providerInitials(p),
+    color: providerColor(p),
+    count: providerCounts.get(p) ?? 0,
+  }))
+  // 各状态数（partial = 测过但未完全成功）
+  let availableCount = 0, partialCount = 0, inactiveCount = 0
+  models.forEach(m => {
+    if (m.catalog_status === 'inactive') inactiveCount++
+    else if (testedIds.has(m.model_id) && !successfulIds.has(m.model_id)) partialCount++
+    else availableCount++
+  })
+  const statusOptions = [
+    { value: 'available', label: '可用', count: availableCount },
+    { value: 'partial', label: '部分完成', count: partialCount },
+    { value: 'inactive', label: '已停用', count: inactiveCount },
+  ]
+  // 各能力类数
+  const capCounts = new Map<string, number>()
+  models.forEach(m => {
+    modelCapCats(m).forEach(c => capCounts.set(c, (capCounts.get(c) ?? 0) + 1))
+  })
+  const capOptions = [
+    { value: 'general', label: '通用', count: capCounts.get('general') ?? 0 },
+    { value: 'code', label: '代码', count: capCounts.get('code') ?? 0 },
+    { value: 'long', label: '长文本', count: capCounts.get('long') ?? 0 },
+  ]
   const filtered = models.filter(m => {
     const q = query.trim().toLowerCase()
     if (q && !`${m.model_name || ''} ${m.model_id} ${m.organization || ''}`.toLowerCase().includes(q)) return false
-    if (provider !== 'all' && m.provider !== provider) return false
-    if (statusFilter === 'available' && m.catalog_status === 'inactive') return false
-    if (statusFilter === 'inactive' && m.catalog_status !== 'inactive') return false
-    if (statusFilter === 'partial') return false
-    if (capFilter !== 'all' && !modelCapCats(m).includes(capFilter)) return false
+    if (providerSet.size && !providerSet.has(m.provider)) return false
+    if (statusSet.size) {
+      const s = m.catalog_status === 'inactive'
+        ? 'inactive'
+        : (testedIds.has(m.model_id) && !successfulIds.has(m.model_id) ? 'partial' : 'available')
+      if (!statusSet.has(s)) return false
+    }
+    if (capSet.size && !modelCapCats(m).some(c => capSet.has(c))) return false
     return true
   })
   const pageCount = Math.ceil(filtered.length / MODEL_PAGE_SIZE)
   const visibleModels = filtered.slice((page - 1) * MODEL_PAGE_SIZE, page * MODEL_PAGE_SIZE)
-  useEffect(() => { setPage(1) }, [query, provider, statusFilter, capFilter, results.length, models.length])
+  useEffect(() => { setPage(1) }, [query, providerSet, statusSet, capSet, results.length, models.length])
   useEffect(() => { if (pageCount > 0 && page > pageCount) setPage(pageCount) }, [page, pageCount])
   const toggle = (id: string) => setChecked(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   const toggleVisible = () => {
@@ -91,29 +127,11 @@ export function Explorer({
         </div>
 
       <div className="filters">
-        <div className="filter-group">
-          <span className="lbl">提供方</span>
-          <span className={`chip ${provider === 'all' ? 'on' : ''}`} onClick={() => setProvider('all')}>全部</span>
-          {providers.map(p => (
-            <span key={p} className={`chip ${provider === p ? 'on' : ''}`} onClick={() => setProvider(p)}>{PROVIDER_LABELS[p] ?? p}</span>
-          ))}
-        </div>
+        <MultiSelectChipField label="提供方" options={providerOptions} selected={providerSet} onChange={setProviderSet} />
         <span className="filter-divider" />
-        <div className="filter-group">
-          <span className="lbl">状态</span>
-          <span className={`chip ${statusFilter === 'all' ? 'on' : ''}`} onClick={() => setStatusFilter('all')}>全部</span>
-          <span className={`chip ${statusFilter === 'available' ? 'on' : ''}`} onClick={() => setStatusFilter('available')}>可用</span>
-          <span className={`chip ${statusFilter === 'partial' ? 'on' : ''}`} onClick={() => setStatusFilter('partial')}>部分完成</span>
-          <span className={`chip ${statusFilter === 'inactive' ? 'on' : ''}`} onClick={() => setStatusFilter('inactive')}>已停用</span>
-        </div>
+        <MultiSelectChipField label="状态" options={statusOptions} selected={statusSet} onChange={setStatusSet} />
         <span className="filter-divider" />
-        <div className="filter-group">
-          <span className="lbl">能力</span>
-          <span className={`chip ${capFilter === 'all' ? 'on' : ''}`} onClick={() => setCapFilter('all')}>全部</span>
-          <span className={`chip ${capFilter === 'general' ? 'on' : ''}`} onClick={() => setCapFilter('general')}>通用</span>
-          <span className={`chip ${capFilter === 'code' ? 'on' : ''}`} onClick={() => setCapFilter('code')}>代码</span>
-          <span className={`chip ${capFilter === 'long' ? 'on' : ''}`} onClick={() => setCapFilter('long')}>长文本</span>
-        </div>
+        <MultiSelectChipField label="能力" options={capOptions} selected={capSet} onChange={setCapSet} />
       </div>
 
       <div className={`batchbar ${checked.length ? 'show' : ''}`}>

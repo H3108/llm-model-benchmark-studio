@@ -138,7 +138,7 @@ export function VerdictBand({ view }: { view: IntelligenceView }) {
     <div className="intell-verdict">
       <div className="iv-score-block">
         <div className="iv-score">
-          <span className="score-label">Overall Score</span>
+          <span className="score-label">综合评分</span>
           <div className="score-value-row">
             <span className="score-value">{view.overallScore.toFixed(1)}</span>
             <span className="score-outof">/ 100</span>
