@@ -35,14 +35,18 @@ export default function App() {
   const [error, setError] = useState('')
   const [running, setRunning] = useState(false)
   const [runMessage, setRunMessage] = useState('')
+  const [runBannerTone, setRunBannerTone] = useState<'success' | 'danger'>('success')
   const [adminToken, setAdminToken] = useState(() => getAdminToken())
   const [authError, setAuthError] = useState<401 | 403 | null>(null)
   const [tokenDraft, setTokenDraft] = useState(() => getAdminToken())
   const [showToken, setShowToken] = useState(false)
   const [capabilityRunning, setCapabilityRunning] = useState(false)
   const [capabilityMessage, setCapabilityMessage] = useState('')
+  const [capabilityBannerTone, setCapabilityBannerTone] = useState<'success' | 'danger'>('success')
   const [benchmarkCompleted, setBenchmarkCompleted] = useState(0)
   const [benchmarkFailed, setBenchmarkFailed] = useState(0)
+  const [capabilityCompleted, setCapabilityCompleted] = useState(0)
+  const [capabilityFailed, setCapabilityFailed] = useState(0)
   const [syncing, setSyncing] = useState(false)
   const [syncMessage, setSyncMessage] = useState('')
   const [capabilitySuccessCount, setCapabilitySuccessCount] = useState(0)
@@ -131,14 +135,23 @@ export default function App() {
   }, [view])
 
   // 性能/能力测试完成后的提示横幅 6s 自动消失；运行中不消失
+  // 同时清零成功/失败计数，让「查看详细结果」按钮随横幅一起自动消失
   useEffect(() => {
     if (!runMessage || running) return
-    const t = setTimeout(() => setRunMessage(''), 6000)
+    const t = setTimeout(() => {
+      setRunMessage('')
+      setBenchmarkCompleted(0)
+      setBenchmarkFailed(0)
+    }, 6000)
     return () => clearTimeout(t)
   }, [runMessage, running])
   useEffect(() => {
     if (!capabilityMessage || capabilityRunning) return
-    const t = setTimeout(() => setCapabilityMessage(''), 6000)
+    const t = setTimeout(() => {
+      setCapabilityMessage('')
+      setCapabilityCompleted(0)
+      setCapabilityFailed(0)
+    }, 6000)
     return () => clearTimeout(t)
   }, [capabilityMessage, capabilityRunning])
 
@@ -159,6 +172,7 @@ export default function App() {
     setRunning(true)
     setAuthError(null)
     setRunMessage(`正在测试 ${ids.length} 个模型…`)
+    setRunBannerTone('success')
     setBenchmarkCompleted(0)
     setBenchmarkFailed(0)
     setView('lab') // stay in lab view during test
@@ -170,6 +184,7 @@ export default function App() {
       setBenchmarkCompleted(completed)
       setBenchmarkFailed(failed)
       setRunMessage(`测试完成：${completed}/${next.length} 成功，失败 ${failed}`)
+      setRunBannerTone(failed > 0 ? 'danger' : 'success')
 
       // The benchmark request has already persisted its results. A temporary
       // failure while refreshing the secondary views should not make a
@@ -187,6 +202,7 @@ export default function App() {
     } catch (e) {
       handleAuthFailure(e)
       setRunMessage(requestErrorMessage(e, '测试失败'))
+      setRunBannerTone('danger')
     } finally {
       setRunning(false)
     }
@@ -197,17 +213,25 @@ export default function App() {
     setCapabilityRunning(true)
     setAuthError(null)
     setCapabilityMessage(`正在评测 ${ids.length} 个模型，共 ${tasks.length} 个任务...`)
+    setCapabilityBannerTone('success')
+    setCapabilityCompleted(0)
+    setCapabilityFailed(0)
     setView('cap') // 保持在能力测试页，不要跳到性能测试
     try {
       const response = await api.runCapability(ids, tasks)
       setCapabilityResults(response.results)
-      setCapabilityMessage(`能力评测完成：成功 ${response.results.filter(item => item.status === 'success').length}，失败 ${response.results.filter(item => item.status === 'failed').length}`)
+      const failedCount = response.results.filter(item => item.status === 'failed').length
+      setCapabilityCompleted(response.results.filter(item => item.status === 'success').length)
+      setCapabilityFailed(failedCount)
+      setCapabilityMessage(`能力评测完成：成功 ${response.results.filter(item => item.status === 'success').length}，失败 ${failedCount}`)
+      setCapabilityBannerTone(failedCount > 0 ? 'danger' : 'success')
       const [latestResults, latestLeaderboard] = await Promise.allSettled([api.capabilityResults(), api.leaderboard('default', true)])
       if (latestResults.status === 'fulfilled') setCapabilityResults(latestResults.value)
       if (latestLeaderboard.status === 'fulfilled') setLeaderboard(latestLeaderboard.value)
     } catch (e) {
       handleAuthFailure(e)
       setCapabilityMessage(requestErrorMessage(e, '能力评测失败'))
+      setCapabilityBannerTone('danger')
     } finally {
       setCapabilityRunning(false)
     }
@@ -315,7 +339,8 @@ export default function App() {
             models={models}
             running={running}
             message={runMessage}
-            onCloseMessage={() => setRunMessage('')}
+            bannerTone={runBannerTone}
+            onCloseMessage={() => { setRunMessage(''); setBenchmarkCompleted(0); setBenchmarkFailed(0) }}
             benchmarkCompleted={benchmarkCompleted}
             benchmarkFailed={benchmarkFailed}
             runBenchmark={runBenchmark}
@@ -331,7 +356,10 @@ export default function App() {
             tasks={capabilityTasks}
             capabilityRunning={capabilityRunning}
             capabilityMessage={capabilityMessage}
-            onCloseMessage={() => setCapabilityMessage('')}
+            bannerTone={capabilityBannerTone}
+            capabilityCompleted={capabilityCompleted}
+            capabilityFailed={capabilityFailed}
+            onCloseMessage={() => { setCapabilityMessage(''); setCapabilityCompleted(0); setCapabilityFailed(0) }}
             runCapability={runCapability}
             labChecked={labChecked}
             setLabChecked={setLabChecked}

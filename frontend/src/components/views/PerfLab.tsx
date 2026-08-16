@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Search, Zap, AlertCircle, X, Server } from 'lucide-react'
+import { Search, Zap, AlertCircle, CheckCircle, X, Server } from 'lucide-react'
 import { Model } from '../../lib/api'
 import { Loader, Button } from '../ui'
 import { providerInitials, PROVIDER_LABELS, providerColor } from '../../lib/providers'
@@ -11,6 +11,7 @@ export function PerfLab({
   models,
   running,
   message,
+  bannerTone,
   onCloseMessage,
   benchmarkCompleted,
   benchmarkFailed,
@@ -23,6 +24,7 @@ export function PerfLab({
   models: Model[];
   running: boolean;
   message: string;
+  bannerTone: 'success' | 'danger';
   onCloseMessage: () => void;
   benchmarkCompleted: number;
   benchmarkFailed: number;
@@ -48,8 +50,8 @@ export function PerfLab({
   return (
     <div className="page-content">
       {message && (
-        <div className={`run-banner ${running ? 'is-running' : ''}`} role="status" aria-live="polite">
-          {running ? <Loader /> : <AlertCircle size={16} />}
+        <div className={`run-banner ${running ? 'is-running' : bannerTone === 'danger' ? 'is-danger' : 'is-success'}`} role="status" aria-live="polite">
+          {running ? <Loader /> : bannerTone === 'danger' ? <AlertCircle size={16} /> : <CheckCircle size={16} />}
           <span>{message}</span>
           {!running && (
             <button className="run-banner-close" onClick={onCloseMessage} aria-label="关闭提示">
@@ -74,7 +76,21 @@ export function PerfLab({
                 </div>
                 <div className="provider-chips">
                   {Object.entries(providerDist).map(([p, n]) => (
-                    <span key={p} className="chip plain"><span className="chip-ic" style={{ background: providerColor(p) }}>{providerInitials(p)}</span>{PROVIDER_LABELS[p] ?? p} · {n}</span>
+                    <span key={p} className="chip plain"><span className="chip-ic" style={{ background: providerColor(p) }}>{providerInitials(p)}</span>{PROVIDER_LABELS[p] ?? p} · {n}
+                      <button className="chip-clear" title={`清空 ${PROVIDER_LABELS[p] ?? p} 的已选模型`} aria-label={`清空 ${PROVIDER_LABELS[p] ?? p} 的已选模型`} onClick={() => {
+                        const toRemove = new Set(selectedModels.filter(m => m.provider === p).map(m => m.model_id))
+                        setLabChecked(prev => prev.filter(id => !toRemove.has(id)))
+                      }}><X size={11} /></button>
+                    </span>
+                  ))}
+                </div>
+                <div className="sel-models">
+                  {selectedModels.map(m => (
+                    <span key={m.model_id} className="sel-model-chip">
+                      <span className="chip-ic" style={{ background: providerColor(m.provider) }}>{providerInitials(m.provider)}</span>
+                      <span className="sel-model-name" title={m.model_id}>{m.model_id}</span>
+                      <button aria-label={`移除 ${m.model_id}`} title="移除该模型" onClick={() => setLabChecked(prev => prev.filter(id => id !== m.model_id))}><X size={11} /></button>
+                    </span>
                   ))}
                 </div>
               </div>
