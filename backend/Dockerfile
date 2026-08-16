@@ -1,8 +1,8 @@
 # Build context = project root (set in docker-compose.yml via context: .)
 FROM python:3.12-slim AS builder
 WORKDIR /app
-COPY backend/requirements.txt .
-RUN pip install --user -r backend/requirements.txt
+COPY backend/requirements.txt /app/requirements.txt
+RUN pip install --user -r /app/requirements.txt
 
 # Runtime stage — structure mirrors the repo layout so config_loader's
 # _project_root() (parents[2] from app/config_loader.py) resolves correctly:
