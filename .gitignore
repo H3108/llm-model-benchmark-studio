@@ -1,0 +1,48 @@
+# ── Secrets / env ──
+.env
+backend/.env
+# keep the safe template
+!.env.example
+
+# ── Databases (local state) ──
+*.db
+*.sqlite
+*.sqlite3
+
+# ── Logs ──
+*.log
+
+# ── Python ──
+__pycache__/
+.pytest_cache/
+.venv/
+backend/.venv/
+*.py[cod]
+
+# ── Node / frontend ──
+node_modules/
+dist/
+frontend/dist/
+frontend/.vite/
+*.tsbuildinfo
+
+# ── Build / QA artifacts ──
+outputs/
+backend/data/
+
+# ── Tooling metadata (not project source) ──
+.docops/
+.claude/
+
+# ── Internal / non-source (privacy + public-release hygiene) ──
+# These are NOT logical code and must never enter the public repo:
+#   docs/          internal reports / audits / design notes (110+ files)
+#   .workbuddy/    assistant private memory & work logs
+#   design/        standalone design prototypes & screenshot binaries
+docs/
+.workbuddy/
+design/
+
+# ── OS / editor ──
+.DS_Store
+Thumbs.db

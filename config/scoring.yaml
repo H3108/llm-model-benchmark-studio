@@ -1,0 +1,52 @@
+version: v1
+
+default:
+  weights:
+    operational: 1.0
+    capability: 0.0
+  operational_weights:
+    availability: 0.35
+    speed: 0.25
+    latency: 0.25
+    context: 0.15
+  capability_weights: {}
+
+profiles:
+  coding:
+    weights:
+      operational: 0.45
+      capability: 0.55
+    operational_weights:
+      availability: 0.20
+      speed: 0.20
+      latency: 0.10
+      context: 0.20
+    capability_weights:
+      coding: 0.60
+      reasoning: 0.20
+      structured_output: 0.20
+
+  agent:
+    weights:
+      operational: 0.40
+      capability: 0.60
+    operational_weights:
+      availability: 0.20
+      speed: 0.15
+      latency: 0.10
+      context: 0.20
+    capability_weights:
+      tool_calling: 0.50
+      reasoning: 0.30
+      instruction_following: 0.20
+
+  chat:
+    weights:
+      operational: 1.0
+      capability: 0.0
+    operational_weights:
+      availability: 0.30
+      speed: 0.30
+      latency: 0.25
+      context: 0.15
+    capability_weights: {}
