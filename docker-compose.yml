@@ -1,18 +1,18 @@
-# ── Production compose (VPS deployment behind system nginx) ──
-# The VPS already runs a system nginx (:80) + xray (:443, TLS termination),
-# so this compose only exposes loopback ports. The system nginx vhost
-# (see deploy/benchmark.conf) routes:
-#   /     → frontend container (:8081)
-#   /api/ → backend container  (:8001)
+# ── Production compose (VPS deployment behind host nginx) ──
+# This VPS already runs a host nginx on :80 (multi-site reverse proxy) and
+# xray/x-ui on :443 (TLS termination + SNI fallback -> host nginx :80).
+# So this stack exposes NO host 80/443. The frontend is published on
+# 127.0.0.1:18080 only, and the host nginx adds a `benchmark.hush7.online`
+# server block that proxies to it.
 #
-# Usage:
+# Usage (on the VPS):
 #   1. cp backend/.env.example backend/.env && edit backend/.env
-#   2. docker compose up -d --build
-#   3. Create system nginx vhost (deploy/benchmark.conf) and reload nginx
-#   4. HTTPS is terminated by xray (SNI fallback → 127.0.0.1:80)
-#
-# For local development, use docker-compose.dev.yml instead:
-#   docker compose -f docker-compose.dev.yml up
+#   2. Add a host-nginx server block for benchmark.hush7.online that
+#      proxies / -> 127.0.0.1:18080 (see docs/04_Ops_Guide/16_Deployment.md)
+#   3. docker compose up -d --build
+#   4. certbot --nginx -d www.hush7.online -d api.hush7.online \
+#        -d job.hush7.online -d models.hush7.online -d benchmark.hush7.online \
+#        (extends the shared multi-domain SAN certificate)
 
 services:
   backend:
@@ -21,12 +21,13 @@ services:
       dockerfile: backend/Dockerfile
     env_file: ./backend/.env
     environment:
-      # Point SQLite into the persistent volume (config.py reads DATABASE_URL).
-      - DATABASE_URL=sqlite:////app/data/benchmark.db
-    ports:
-      - "127.0.0.1:8001:8000"
+      # Persist SQLite inside the named volume (matches volumes below).
+      # Default sqlite:///./benchmark.db would land in the container's
+      # ephemeral layer and be lost on container recreation.
+      DATABASE_URL: sqlite:////app/data/benchmark.db
+    expose:
+      - "8000"
     volumes:
-      # SQLite DB persists across container recreation.
       - benchmark_data:/app/data
     restart: unless-stopped
 
@@ -35,7 +36,8 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
     ports:
-      - "127.0.0.1:8081:80"
+      # Localhost only — the host nginx reverse-proxies externally.
+      - "127.0.0.1:18080:80"
     depends_on:
       - backend
     restart: unless-stopped
